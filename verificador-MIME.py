@@ -2,97 +2,56 @@ import re
 import os
 import tkinter as tk
 from tkinter import filedialog
+import mimetypes
 
 # =============================================================================
-# 1. LÓGICA DE NEGOCIO (Mantenida intacta)
+# 1. LÓGICA PRINCIPAL DEL PROGRAMA
 # =============================================================================
-
-# Diccionario ampliado de tipos MIME comunes
-MIME_TYPES = {
-    # Texto y Web
-    "txt": "text/plain",
-    "html": "text/html",
-    "htm": "text/html",
-    "css": "text/css",
-    "js": "application/javascript",
-    "json": "application/json",
-    "xml": "application/xml",
-    "csv": "text/csv",
-    
-    # Documentos
-    "pdf": "application/pdf",
-    "doc": "application/msword",
-    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "xls": "application/vnd.ms-excel",
-    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "ppt": "application/vnd.ms-powerpoint",
-    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    
-    # Imágenes
-    "jpg": "image/jpeg",
-    "jpeg": "image/jpeg",
-    "png": "image/png",
-    "gif": "image/gif",
-    "webp": "image/webp",
-    "svg": "image/svg+xml",
-    "ico": "image/x-icon",
-    "bmp": "image/bmp",
-    
-    # Audio
-    "mp3": "audio/mpeg",
-    "wav": "audio/wav",
-    "ogg": "audio/ogg",
-    "midi": "audio/midi",
-    
-    # Video
-    "mp4": "video/mp4",
-    "avi": "video/x-msvideo",
-    "mpeg": "video/mpeg",
-    "webm": "video/webm",
-    "mov": "video/quicktime",
-    
-    # Archivos Comprimidos
-    "zip": "application/zip",
-    "rar": "application/vnd.rar",
-    "7z": "application/x-7z-compressed",
-    "tar": "application/x-tar",
-    "gz": "application/gzip",
-
-    # Código Fuente / Desarrollo
-    "py": "text/x-python",
-    "jsx": "text/jsx",  
-    "ts": "application/typescript", 
-    "tsx": "text/tsx",              
-    "java": "text/x-java-source",
-    "c": "text/x-c",
-    "cpp": "text/x-c++",
-    "sh": "application/x-sh",       
-    
-    # Documentación y Logs
-    "md": "text/markdown",
-    "log": "text/plain",
-    "url": "application/internet-shortcut",
-
-    # Otros
-    "exe": "application/vnd.microsoft.portable-executable",
-    "bin": "application/octet-stream" # Binario genérico 
-    
-    
-}
 
 def obtener_mime_type(nombre_archivo: str) -> str:
-    """Identifica y devuelve el tipo MIME usando regex."""
+    """
+    Identifica y devuelve el tipo MIME usando mimetypes (basado en IANA).
+    
+    NOTA: Aunque mimetypes usa internamente una base de datos más completa,
+    el analisis de la expresión regular es útil para extraer la extensión 
+    y dar respuesta a casos sin extensión explícita.
+    """
+    
+    # En las siguientes instrucciones se intenta extraer la extensión mediante regex (MÉTODO 1)
+    
+    # Cuándo hay una r'...' significa que el contenido entre las comillas está destinado a ser una expresión regular.
+    # -patron- es una str que almacenará una expresión regular.
     patron = r'\.([a-zA-Z0-9]+)$'
+    # Coincidencia es un objeto de tipo Match.
+    # El misma puede devolver NULL (si no hay coincidencia) o...
+    # Un objeto con 3 propiedades: span (ubicación de la coincidencia), group(0) y group(1) (texto que coincide con el patrón) 
     coincidencia = re.search(patron, nombre_archivo)
     
+    # Si coincidencia no es NULL (el archivo tiene extensión), se busca el MIME type correspondiente a la extensión encontrada.
     if coincidencia:
-        extension = coincidencia.group(1).lower()
-        if extension in MIME_TYPES:
-            return MIME_TYPES[extension]
+        # mimetypes.guess_type() toma la ruta completa o el nombre del archivo.
+        # Devuelve una tupla (mime_type, encoding). En este caso, la segunda variable (Codificación) se ignora porque no es relevante.
+        mime_type, _ = mimetypes.guess_type(nombre_archivo)
+        
+        if mime_type:
+            # El MIME type fué encontrado por mimetypes
+            return mime_type
         else:
-            return f"Extensión **no reconocida**: '.{extension}'"
+            # mimetypes no encontró la estensión (es válida pero desconocida para Python)
+            # La extensión se pasa a minuscula y se muestra un mensaje
+            extension = coincidencia.group(1).lower()
+            return f"Extensión **no reconocida oficialmente**: '.{extension}'"
+            
     else:
-        return "**El archivo no tiene una extensión reconocida.**"
+        # 2. Archivo sin extensión (o la extensión no cumple el patrón)
+        # Se hace una última verificación para ver si mimetypes es capaz de 
+        # detectar algo, aunque es poco probable sin extensión.
+        mime_type, _ = mimetypes.guess_type(nombre_archivo)
+        
+        if mime_type:
+            return mime_type # Solo por precaución
+        else:
+            return "**El archivo no tiene una extensión reconocida.**"
 
 # =============================================================================
 # 2. CONFIGURACIÓN VISUAL 
